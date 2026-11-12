@@ -1,521 +1,413 @@
-
 'use client';
 
-import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
+
+async function compressPhoto(file) {
+  const bitmap = await createImageBitmap(file);
+
+  const maxDimension = 1440;
+  const scale = Math.min(
+    1,
+    maxDimension / Math.max(bitmap.width, bitmap.height)
+  );
+
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(bitmap.width * scale);
+  canvas.height = Math.round(bitmap.height * scale);
+
+  const context = canvas.getContext('2d');
+  context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close();
+
+  const blob = await new Promise((resolve) => {
+    canvas.toBlob(resolve, 'image/jpeg', 0.75);
+  });
+
+  if (!blob) {
+    throw new Error('No se pudo preparar la fotografía.');
+  }
+
+  return new File([blob], 'evidencia.jpg', {
+    type: 'image/jpeg',
+    lastModified: Date.now(),
+  });
+}
 
 export default function Home() {
+  const router = useRouter();
+  const fileInputRef = useRef(null);
+
   const [photo, setPhoto] = useState(null);
-  const [title, setTitle] = useState('');
-  const [category, setCategory] = useState('Alumbrado público');
-  const [description, setDescription] = useState('');
-  const [location, setLocation] = useState('');
-  const [folio, setFolio] = useState('');
-  const [searchFolio, setSearchFolio] = useState('');
-  const [searchCode, setSearchCode] = useState('');
-  const [reportResult, setReportResult] = useState(null);
+  const [preview, setPreview] = useState('');
   const [message, setMessage] = useState('');
-  const [loginOpen, setLoginOpen] = useState(false);
+  const [processing, setProcessing] = useState(false);
 
   useEffect(() => {
     return () => {
-      if (photo) URL.revokeObjectURL(photo);
+      if (preview) URL.revokeObjectURL(preview);
     };
-  }, [photo]);
+  }, [preview]);
 
-  const handlePhoto = (event) => {
+  const openCamera = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handlePhoto = async (event) => {
     const file = event.target.files?.[0];
-
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      setMessage('Selecciona un archivo de imagen válido.');
+      setMessage('Selecciona una fotografía válida.');
       event.target.value = '';
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      setMessage('La fotografía no puede superar los 5 MB.');
+    if (file.size > 10 * 1024 * 1024) {
+      setMessage('La fotografía original no debe superar los 10 MB.');
       event.target.value = '';
       return;
     }
 
+    setProcessing(true);
     setMessage('');
-    setPhoto(URL.createObjectURL(file));
+
+    try {
+      const optimizedPhoto = await compressPhoto(file);
+      setPhoto(optimizedPhoto);
+      setPreview(URL.createObjectURL(optimizedPhoto));
+    } catch (error) {
+      setMessage(error.message || 'No fue posible procesar la fotografía.');
+    } finally {
+      setProcessing(false);
+      event.target.value = '';
+    }
   };
 
-  const generateReport = async (event) => {
-  event.preventDefault();
+  const continueToReport = () => {
+    if (!photo || processing) return;
 
-  setMessage("Registrando reporte...");
+    setProcessing(true);
+    setMessage('');
 
-  try {
-    const response = await fetch("/api/reportes", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        title,
-        category,
-        description,
-        location,
-      }),
-    });
+    const reader = new FileReader();
 
-    const data = await response.json();
+    reader.onload = () => {
+      try {
+        sessionStorage.setItem(
+          'ca-report-photo',
+          JSON.stringify({
+            dataUrl: reader.result,
+            name: photo.name,
+            type: photo.type,
+          })
+        );
 
-    if (!response.ok) {
-      throw new Error(data.error || "No se pudo registrar el reporte.");
-    }
-
-    const report = {
-      folio: data.folio,
-      title,
-      category,
-      description,
-      location,
-      status: "Recibido",
-      date: new Date().toLocaleDateString("es-MX"),
-      photoAttached: Boolean(photo),
+        router.push('/reportar');
+      } catch {
+        setMessage('No se pudo transferir la fotografía. Prueba con otra imagen.');
+        setProcessing(false);
+      }
     };
 
-    setFolio(data.folio);
-    setSearchFolio(data.folio);
-    setReportResult(report);
-    setMessage("¡Reporte guardado correctamente en CIUDAD 360!");
+    reader.onerror = () => {
+      setMessage('Ocurrió un error al preparar la fotografía.');
+      setProcessing(false);
+    };
 
-    setTitle("");
-    setCategory("Alumbrado público");
-    setDescription("");
-    setLocation("");
-    setPhoto(null);
-
-    event.target.reset();
-
-  } catch (error) {
-    setMessage(error.message || "Error al registrar el reporte.");
-  }
-};
-
-  const searchReport = async (event) => {
-  event.preventDefault();
-  setReportResult(null);
-
-  try {
-    const response = await fetch("/api/reportes/seguimiento", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        folio: searchFolio,
-        codigo: searchCode,
-      }),
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.error || "No se pudo consultar el reporte.");
-    }
-
-    setReportResult(data.reporte);
-
-  } catch (error) {
-    setReportResult(false);
-    console.error("Error en seguimiento:", error);
-  }
-};
+    reader.readAsDataURL(photo);
+  };
 
   return (
-    <main>
-      {/* ENCABEZADO INSTITUCIONAL */}
-      <header className="ca-header">
-        <div className="container d-flex justify-content-between align-items-center">
-          <a href="#inicio" className="ca-brand">
-            <span className="ca-logo">CA</span>
-            <span>
-              <strong>COMUNIDAD ACTIVA</strong>
-              <small>Portal de Atención Ciudadana</small>
-            </span>
-          </a>
+    <main className="ca-muni-page">
 
-          <nav className="ca-nav">
-            <a href="#inicio">Inicio</a>
-            <a href="#reportar">Reportar problema</a>
-            <a href="#seguimiento">Seguimiento</a>
-            <button
-              className="btn-login"
-              onClick={() => setLoginOpen(true)}
-            >
-              Iniciar sesión
-            </button>
+      {/* Barra institucional superior */}
+      <div className="ca-muni-topbar">
+        <div className="ca-muni-container ca-muni-topbar-content">
+          <span>PORTAL DE ATENCIÓN CIUDADANA</span>
+          <span>PARTICIPACIÓN · SERVICIO · COMUNIDAD</span>
+        </div>
+      </div>
+
+      {/* Encabezado */}
+      <header className="ca-muni-header">
+        <div className="ca-muni-container ca-muni-header-content">
+
+          <Link href="/" className="ca-muni-brand">
+            <div className="ca-muni-seal">
+              <span>V3</span>
+            </div>
+
+            <div className="ca-muni-brand-text">
+              <strong>VERACRUZ360</strong>
+              <span>Portal Municipal de Atención Ciudadana</span>
+            </div>
+          </Link>
+
+          <nav className="ca-muni-nav">
+            <Link href="/" className="ca-muni-nav-active">
+              Inicio
+            </Link>
+
+            <Link href="/seguimiento">
+              Seguimiento
+            </Link>
+
+            <Link href="/login" className="ca-muni-admin">
+              Acceso administrativo
+            </Link>
           </nav>
+
         </div>
       </header>
 
-      {/* SECCIÓN PRINCIPAL */}
-      <section id="inicio" className="ca-hero">
-        <div className="container">
-          <div className="row align-items-center">
-            <div className="col-lg-7">
-              <span className="ca-label">
-                PARTICIPACIÓN CIUDADANA
-              </span>
+      {/* Encabezado principal */}
+      <section className="ca-muni-hero">
+        <div className="ca-muni-container ca-muni-hero-content">
 
-              <h1>
-                Tu comunidad,
-                <br />
-                <span>nuestra responsabilidad.</span>
-              </h1>
-
-              <p className="ca-hero-text">
-                Reporta los problemas de tu comunidad y contribuye
-                a mejorar los espacios públicos. Queremos escuchar
-                tu voz y facilitar el seguimiento de cada incidencia.
-              </p>
-
-              <div className="d-flex flex-wrap gap-3">
-                <a href="#reportar" className="btn-primary-ca">
-                  Generar reporte
-                </a>
-
-                <a href="#seguimiento" className="btn-outline-ca">
-                  Seguimiento de reportes
-                </a>
-              </div>
-            </div>
-
-            <div className="col-lg-5 mt-5 mt-lg-0">
-              <div className="ca-hero-card">
-                <div className="ca-hero-icon">🏛️</div>
-                <h3>Una comunidad que participa</h3>
-                <p>
-                  Tu participación permite identificar necesidades
-                  y construir mejores espacios para todos.
-                </p>
-                <div className="ca-divider"></div>
-                <div className="d-flex justify-content-between">
-                  <span>Reportes ciudadanos</span>
-                  <strong>Comunidad Activa</strong>
-                </div>
-              </div>
-            </div>
+          <div className="ca-muni-hero-label">
+            <span></span>
+            ATENCIÓN A LA CIUDADANÍA
           </div>
+
+          <h1>
+            Construyamos juntos
+            <br />
+            <strong>una mejor comunidad.</strong>
+          </h1>
+
+          <p>
+            Reporta los problemas que afectan tus espacios públicos.
+            Tu participación nos ayuda a identificar necesidades,
+            organizar la atención y dar seguimiento a cada incidencia.
+          </p>
+
+          <div className="ca-muni-hero-note">
+            <span className="ca-muni-note-icon">i</span>
+            <span>
+              Tu reporte contribuye a mejorar los servicios y espacios
+              de nuestra comunidad.
+            </span>
+          </div>
+
         </div>
       </section>
 
-      {/* INFORMACIÓN DE SERVICIO */}
-      <section className="ca-info">
-        <div className="container">
-          <div className="row text-center g-4">
-            <div className="col-md-4">
-              <div className="ca-info-item">
-                <span>01</span>
-                <h5>Identifica</h5>
-                <p>Localiza un problema en tu comunidad.</p>
-              </div>
-            </div>
+      {/* Área principal de acciones */}
+      <section className="ca-muni-main">
+        <div className="ca-muni-container">
 
-            <div className="col-md-4">
-              <div className="ca-info-item">
-                <span>02</span>
-                <h5>Reporta</h5>
-                <p>Describe la incidencia y adjunta una fotografía.</p>
-              </div>
-            </div>
-
-            <div className="col-md-4">
-              <div className="ca-info-item">
-                <span>03</span>
-                <h5>Da seguimiento</h5>
-                <p>Consulta el estado de tu reporte mediante un folio.</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* FORMULARIO DE REPORTE */}
-      <section id="reportar" className="ca-section">
-        <div className="container">
-          <div className="ca-section-heading text-center">
-            <span className="ca-label-blue">ATENCIÓN CIUDADANA</span>
-            <h2>Generar un reporte</h2>
+          <div className="ca-muni-section-heading">
+            <span>TRÁMITES Y SERVICIOS</span>
+            <h2>¿Cómo podemos ayudarte?</h2>
             <p>
-              Proporciona los datos del problema para registrar
-              una nueva incidencia.
+              Selecciona una opción para realizar tu reporte
+              o consultar su estado.
             </p>
           </div>
 
-          <div className="row justify-content-center">
-            <div className="col-lg-9">
-              <div className="ca-form-card">
-                <form onSubmit={generateReport}>
-                  <div className="mb-4">
-                    <label className="form-label">
-                      Tipo de problema
-                    </label>
+          {/* Tarjeta para crear un reporte */}
+          <div className="ca-muni-report-card">
 
-                    <select
-                      className="form-select"
-                      value={category}
-                      onChange={(e) => setCategory(e.target.value)}
-                    >
-                      <option>Alumbrado público</option>
-                      <option>Baches y vialidades</option>
-                      <option>Fugas de agua</option>
-                      <option>Recolección de basura</option>
-                      <option>Espacios públicos</option>
-                      <option>Otro problema</option>
-                    </select>
-                  </div>
+            <div className="ca-muni-report-title">
+              <div className="ca-muni-number">01</div>
 
-                  <div className="mb-4">
-                    <label className="form-label">
-                      Título del reporte
-                    </label>
-
-                    <input
-                      className="form-control"
-                      type="text"
-                      placeholder="Ej. Luminaria apagada en mi colonia"
-                      value={title}
-                      onChange={(e) => setTitle(e.target.value)}
-                      maxLength={100}
-                      required
-                    />
-                  </div>
-
-                  <div className="mb-4">
-                    <label className="form-label">
-                      Descripción del problema
-                    </label>
-
-                    <textarea
-                      className="form-control"
-                      rows="4"
-                      placeholder="Explica qué sucede y desde cuándo..."
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value)}
-                      maxLength={1000}
-                      required
-                    ></textarea>
-                  </div>
-
-                  <div className="mb-4">
-                    <label className="form-label">
-                      Ubicación del problema
-                    </label>
-
-                    <input
-                      className="form-control"
-                      type="text"
-                      placeholder="Calle, colonia o referencia"
-                      value={location}
-                      onChange={(e) => setLocation(e.target.value)}
-                      maxLength={200}
-                      required
-                    />
-                  </div>
-
-                  {/* FOTOGRAFÍA */}
-                  <div className="mb-4">
-                    <label className="form-label">
-                      Evidencia fotográfica
-                    </label>
-
-                    <label htmlFor="photo-upload" className="ca-upload">
-                      {photo ? (
-                        <img
-                          src={photo}
-                          alt="Vista previa del problema"
-                          className="ca-photo-preview"
-                        />
-                      ) : (
-                        <>
-                          <span className="ca-camera">📷</span>
-                          <strong>Tomar o cargar fotografía</strong>
-                          <small>
-                            Selecciona una imagen desde tu dispositivo.
-                            Máximo 5 MB.
-                          </small>
-                        </>
-                      )}
-                    </label>
-
-                    <input
-                      id="photo-upload"
-                      type="file"
-                      accept="image/*"
-                      capture="environment"
-                      className="d-none"
-                      onChange={handlePhoto}
-                    />
-
-                    {photo && (
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-outline-danger mt-2"
-                        onClick={() => {
-                          setPhoto(null);
-                          document.getElementById('photo-upload').value = '';
-                        }}
-                      >
-                        Quitar fotografía
-                      </button>
-                    )}
-                  </div>
-
-                  {message && (
-                    <div className="alert alert-info">
-                      {message}
-                    </div>
-                  )}
-
-                  <button className="btn-submit-ca" type="submit">
-                    Generar reporte →
-                  </button>
-                </form>
-
-                {folio && (
-                  <div className="ca-folio-success mt-4">
-                    <strong>Reporte registrado en esta demostración.</strong>
-                    <p className="mb-1">Tu número de folio es:</p>
-                    <h3>{folio}</h3>
-                    <small>Guarda este número para consultar tu reporte.</small>
-                  </div>
-                )}
+              <div>
+                <h3>Realizar un reporte ciudadano</h3>
+                <p>
+                  Toma una fotografía del problema que deseas reportar.
+                </p>
               </div>
             </div>
-          </div>
-        </div>
-      </section>
 
-      {/* SEGUIMIENTO */}
-      <section id="seguimiento" className="ca-tracking">
-        <div className="container">
-          <div className="row justify-content-center">
-            <div className="col-lg-8">
-              <div className="ca-tracking-card">
-                <div className="text-center">
-                  <span className="ca-label-blue">
-                    CONSULTA CIUDADANA
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="ca-muni-file-input"
+              onChange={handlePhoto}
+            />
+
+            <button
+              type="button"
+              className={`ca-muni-camera ${preview ? 'ca-muni-camera-preview' : ''}`}
+              onClick={openCamera}
+              disabled={processing}
+            >
+              {preview ? (
+                <>
+                  <img src={preview} alt="Vista previa de la incidencia" />
+                  <span className="ca-muni-change-photo">
+                    Cambiar fotografía
+                  </span>
+                </>
+              ) : (
+                <div className="ca-muni-camera-content">
+
+                  <div className="ca-muni-camera-icon">
+                    <svg
+                      width="54"
+                      height="54"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M14 5h-4L8 8H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-3l-2-3Z" />
+                      <circle cx="12" cy="13" r="4" />
+                    </svg>
+                  </div>
+
+                  <strong>TOMAR FOTOGRAFÍA</strong>
+
+                  <span>
+                    Selecciona esta opción para abrir la cámara
+                    o elegir una imagen de tu dispositivo.
                   </span>
 
-                  <h2>Seguimiento de reportes</h2>
-
-                  <p>
-                    Consulta el estado de tu incidencia utilizando
-                    el número de folio que recibiste al reportar.
-                  </p>
+                  <small>JPG, PNG o WEBP · Máximo 10 MB</small>
                 </div>
+              )}
+            </button>
 
-                <form onSubmit={searchReport}>
-                  <label className="form-label">
-                    Número de folio
-                  </label>
+            {photo && (
+              <div className="ca-muni-photo-success">
+                <span>✓ Fotografía seleccionada correctamente</span>
+                <small>{photo.name}</small>
+              </div>
+            )}
 
-                  <div className="input-group">
-                    <input
-                      type="text"
-                      className="form-control"
-                      placeholder="Ej. CA-12345678"
-                      value={searchFolio}
-                      onChange={(e) => {
-                        setSearchFolio(e.target.value);
-                        setReportResult(null);
-                      }}
-                      required
-                    />
+            {message && (
+              <div className="alert alert-danger mt-3 mb-0">
+                {message}
+              </div>
+            )}
 
-                    <button className="btn-search-ca" type="submit">
-                      Consultar
-                    </button>
-                  </div>
-                                   <label className="form-label mt-3">
-                    Código privado de seguimiento
-                  </label>
+            <button
+              type="button"
+              className="ca-muni-continue"
+              disabled={!photo || processing}
+              onClick={continueToReport}
+            >
+              {processing
+                ? 'Preparando fotografía...'
+                : 'Continuar con el reporte →'}
+            </button>
 
-                  <input
-                    type="text"
-                    className="form-control"
-                    placeholder="Ingresa tu código de seguimiento"
-                    value={searchCode}
-                    onChange={(e) => {
-                      setSearchCode(e.target.value);
-                      setReportResult(null);
-                    }}
-                    required
-                  />
-                </form>
+            <p className="ca-muni-privacy">
+              La fotografía servirá como evidencia para describir
+              la incidencia en el siguiente paso.
+            </p>
 
-                {reportResult === false && (
-                  <div className="alert alert-warning mt-3 mb-0">
-                    No encontramos ese folio en los reportes
-                    registrados en este navegador.
-                  </div>
-                )}
+          </div>
 
-                {reportResult && reportResult !== false && (
-                  <div className="ca-result mt-4">
-                    <span className="badge text-bg-success">
-                      {reportResult.status}
-                    </span>
+          {/* Seguimiento */}
+          <div className="ca-muni-tracking">
 
-                    <h5 className="mt-3">
-                      {reportResult.title}
-                    </h5>
+            <div className="ca-muni-tracking-icon">
+              <svg
+                width="31"
+                height="31"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.7"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <circle cx="11" cy="11" r="7" />
+                <path d="m20 20-4-4" />
+                <path d="M11 7v4l2 2" />
+              </svg>
+            </div>
 
-                    <p><strong>Folio:</strong> {reportResult.folio}</p>
-                    <p><strong>Categoría:</strong> {reportResult.category}</p>
-                    <p><strong>Ubicación:</strong> {reportResult.location}</p>
-                    <p><strong>Fecha:</strong> {reportResult.date}</p>
-                  </div>
-                )}
+            <div className="ca-muni-tracking-text">
+              <strong>¿Ya tienes un reporte?</strong>
+              <span>
+                Consulta su estado utilizando tus datos de seguimiento.
+              </span>
+            </div>
+
+            <Link
+              href="/seguimiento"
+              className="ca-muni-tracking-button"
+            >
+              Consultar seguimiento →
+            </Link>
+
+          </div>
+
+          {/* Categorías de problemas */}
+          <div className="ca-muni-categories">
+            <div className="ca-muni-categories-heading">
+              <span>INCIDENCIAS COMUNITARIAS</span>
+              <h2>¿Qué puedes reportar?</h2>
+            </div>
+
+            <div className="ca-muni-category-grid">
+              <div className="ca-muni-category">
+                <span>01</span>
+                <strong>Alumbrado público</strong>
+                <small>Luminarias apagadas o dañadas</small>
+              </div>
+
+              <div className="ca-muni-category">
+                <span>02</span>
+                <strong>Calles y vialidades</strong>
+                <small>Baches y daños en pavimento</small>
+              </div>
+
+              <div className="ca-muni-category">
+                <span>03</span>
+                <strong>Agua y drenaje</strong>
+                <small>Fugas y problemas de drenaje</small>
+              </div>
+
+              <div className="ca-muni-category">
+                <span>04</span>
+                <strong>Limpieza pública</strong>
+                <small>Basura y espacios descuidados</small>
               </div>
             </div>
           </div>
+
         </div>
       </section>
 
-      {/* PIE DE PÁGINA */}
-      <footer className="ca-footer">
-        <div className="container text-center">
-          <strong>COMUNIDAD ACTIVA</strong>
-          <p>Participación ciudadana para mejores espacios públicos.</p>
-          <small>Plataforma de atención ciudadana · 2026</small>
+      {/* Pie institucional */}
+      <footer className="ca-muni-footer">
+        <div className="ca-muni-container">
+
+          <div className="ca-muni-footer-main">
+            <div>
+              <strong>VERACRUZ360</strong>
+              <p>
+                Una comunidad que participa es una comunidad
+                que puede mejorar.
+              </p>
+            </div>
+
+            <div className="ca-muni-footer-links">
+              <Link href="/">Inicio</Link>
+              <Link href="/seguimiento">Seguimiento</Link>
+              <Link href="/login">Administración</Link>
+            </div>
+          </div>
+
+          <div className="ca-muni-footer-bottom">
+            <span>Portal de Atención Ciudadana</span>
+            <span>© 2026 VERACRUZ360</span>
+          </div>
+
         </div>
       </footer>
 
-      {/* VENTANA DE INICIO DE SESIÓN */}
-      {loginOpen && (
-        <div className="ca-modal-overlay" onClick={() => setLoginOpen(false)}>
-          <div className="ca-modal" onClick={(e) => e.stopPropagation()}>
-            <button
-              className="ca-modal-close"
-              onClick={() => setLoginOpen(false)}
-              aria-label="Cerrar"
-            >
-              ×
-            </button>
-
-            <span className="ca-label-blue">ACCESO AL SISTEMA</span>
-            <h3>Iniciar sesión</h3>
-            <p>
-              El acceso de usuarios estará disponible cuando
-              integremos el módulo de autenticación.
-            </p>
-
-            <button
-              className="btn-submit-ca"
-              onClick={() => setLoginOpen(false)}
-            >
-              Entendido
-            </button>
-          </div>
-        </div>
-      )}
     </main>
   );
 }
