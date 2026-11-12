@@ -1,0 +1,56 @@
+# Variables de entorno
+.env
+.env.*
+!.env.example
+
+# Node.js
+node_modules/
+.next/
+npm-debug.log*
+
+# Python
+venv/
+.venv/
+__pycache__/
+*.pyc
+
+# Sistema
+.DS_Store
+
+# Archivos temporales de editores
+*.swp
+*.swo
+*~
+
+# Respaldos de bases de datos
+*.sql
+
+# Archivos comprimidos
+*.zip
+
+
+# Logs
+*.log
+
+# Respaldos
+*.bak
+*.bak-*
+*.backup
+*.save
+*.pre-whatsapp
+
+# Fotografías de reportes ciudadanos
+public/imagenes/
+
+# Archivos privados de ciudad360
+ciudad360/venv/
+ciudad360/admin/.env
+ciudad360/admin/.env.*
+ciudad360/flask.log
+ciudad360/ciudad360_respaldo.sql
+ciudad360/**/*.bak
+ciudad360/**/__pycache__/
+
+# Archivos temporales
+*.log
+*.bak

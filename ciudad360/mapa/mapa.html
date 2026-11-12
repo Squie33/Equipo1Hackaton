@@ -1,0 +1,1439 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>Veracruz360 - Portal Municipal de Atención Ciudadana</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        :root {
+            --azul-marino: #142E50;
+            --azul-gubernamental: #1E4773;
+            --dorado-institucional: #C7A45B;
+            --fondo-general: #F3F5F8;
+            --blanco: #FFFFFF;
+            --texto-principal: #26364A;
+            --texto-secundario: #6B7787;
+            --azul-oscuro: #10243D;
+            --beige-claro: #F5F0E5;
+            --borde-institucional: #E1E6ED;
+            --rojo-alerta: #991B1B;
+            --rojo-hover: #7F1D1D;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; }
+        html, body {
+            width: 100%;
+            max-width: 100%;
+            overflow-x: hidden;
+            background-color: var(--fondo-general);
+            color: var(--texto-principal);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .top-bar {
+            background-color: var(--azul-oscuro);
+            color: #D6DFEB;
+            padding: 8px 0;
+            font-size: 11px;
+            letter-spacing: 1.2px;
+            text-transform: uppercase;
+            width: 100%;
+        }
+        .container-institucional {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+            width: 100%;
+        }
+        .top-bar-inner {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 6px;
+        }
+        .top-bar span.puntos { color: var(--dorado-institucional); margin: 0 4px; }
+
+        .header-institucional {
+            background-color: var(--blanco);
+            padding: 14px 0;
+            border-bottom: 1px solid var(--borde-institucional);
+            width: 100%;
+        }
+        .header-inner {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 14px;
+        }
+        .brand { display: flex; align-items: center; gap: 12px; text-decoration: none; }
+        .logo-circular {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background-color: var(--blanco);
+            color: var(--azul-marino);
+            border: 2px solid var(--dorado-institucional);
+            box-shadow: inset 0 0 0 3px var(--blanco), inset 0 0 0 4px rgba(199, 164, 91, 0.45);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 14px;
+            letter-spacing: 0.5px;
+            flex-shrink: 0;
+        }
+        .brand-text h1 {
+            font-size: 17px;
+            font-weight: 800;
+            color: var(--azul-marino);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin: 0;
+            line-height: 1.2;
+        }
+        .brand-text p {
+            font-size: 11.5px;
+            color: var(--texto-secundario);
+            margin-top: 2px;
+        }
+        .nav-institucional { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
+        .nav-institucional a.nav-link {
+            text-decoration: none;
+            color: var(--texto-principal);
+            font-size: 13px;
+            font-weight: 600;
+            transition: color 0.2s ease;
+        }
+        .nav-institucional a.nav-link:hover { color: var(--azul-gubernamental); }
+        .btn-admin {
+            background-color: var(--azul-marino);
+            color: var(--blanco);
+            text-decoration: none;
+            font-size: 12.5px;
+            font-weight: 700;
+            padding: 10px 16px;
+            border-radius: 5px;
+            transition: background-color 0.2s ease;
+        }
+        .btn-admin:hover { background-color: var(--azul-gubernamental); }
+
+        .hero-band {
+            background: linear-gradient(125deg, #0E223B 0%, #142E50 55%, #1B416B 100%);
+            color: var(--blanco);
+            padding: 44px 0 56px 0;
+            position: relative;
+            overflow: hidden;
+            width: 100%;
+        }
+        .hero-band::before, .hero-band::after {
+            content: "";
+            position: absolute;
+            border-radius: 50%;
+            border: 28px solid rgba(255, 255, 255, 0.03);
+            pointer-events: none;
+        }
+        .hero-band::before { width: 420px; height: 420px; right: -80px; bottom: -160px; }
+        .hero-band::after { width: 280px; height: 280px; right: -10px; bottom: -90px; }
+
+        .hero-etiqueta {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1.6px;
+            color: #D6DFEB;
+            font-weight: 700;
+            margin-bottom: 18px;
+        }
+        .hero-etiqueta::before {
+            content: "";
+            display: inline-block;
+            width: 24px;
+            height: 2px;
+            background-color: var(--dorado-institucional);
+        }
+        .hero-center {
+            text-align: center;
+            max-width: 680px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+        .hero-center h2 {
+            font-size: 38px;
+            font-weight: 800;
+            color: var(--blanco);
+            line-height: 1.18;
+            letter-spacing: -0.5px;
+            margin-bottom: 14px;
+        }
+        .hero-center h2 span.punto-dorado { color: var(--dorado-institucional); }
+        .hero-center p {
+            font-size: 14px;
+            color: #CBD5E1;
+            line-height: 1.55;
+        }
+
+        .main-container {
+            max-width: 1200px;
+            width: 100%;
+            margin: -24px auto 40px auto;
+            padding: 0 20px;
+            flex: 1;
+            position: relative;
+            z-index: 2;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 16px;
+            margin-bottom: 22px;
+        }
+        .card {
+            background: var(--blanco);
+            padding: 18px 20px;
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(16, 36, 61, 0.06);
+            border: 1px solid var(--borde-institucional);
+            border-top: 4px solid var(--dorado-institucional);
+            min-width: 0;
+        }
+        .card h3 {
+            font-size: 11px;
+            color: var(--texto-secundario);
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            font-weight: 700;
+        }
+        .card p { font-size: 28px; font-weight: 800; margin-top: 6px; color: var(--azul-marino); }
+        .card .sub-metric { font-size: 11.5px; color: var(--texto-secundario); margin-top: 4px; display: block; }
+
+        .content-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.75fr);
+            gap: 20px;
+            width: 100%;
+        }
+
+        .panel-box {
+            background: var(--blanco);
+            border-radius: 6px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(16, 36, 61, 0.06);
+            border: 1px solid var(--borde-institucional);
+            border-top: 4px solid var(--dorado-institucional);
+            min-width: 0;
+            width: 100%;
+        }
+        .panel-step-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding-bottom: 14px;
+            margin-bottom: 14px;
+            border-bottom: 1px solid var(--borde-institucional);
+        }
+        .step-badge {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            background-color: var(--beige-claro);
+            color: var(--azul-marino);
+            font-weight: 800;
+            font-size: 12.5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .panel-step-header h3 {
+            font-size: 15.5px;
+            font-weight: 800;
+            color: var(--azul-marino);
+            margin-bottom: 2px;
+        }
+        .panel-step-header p {
+            font-size: 12px;
+            color: var(--texto-secundario);
+            line-height: 1.4;
+        }
+
+        .table-container { width: 100%; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+        th, td { padding: 10px 8px; text-align: left; border-bottom: 1px solid var(--borde-institucional); color: var(--texto-principal); }
+        th {
+            background: var(--fondo-general);
+            color: var(--azul-marino);
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 11px;
+            letter-spacing: 0.5px;
+            border-top: 1px solid var(--borde-institucional);
+            border-bottom: 2px solid var(--borde-institucional);
+        }
+        tbody tr:hover { background-color: #F8FAFC; }
+
+        .folio-texto {
+            font-weight: 800;
+            color: var(--azul-marino);
+            word-break: break-all;
+            display: inline-block;
+        }
+
+        .badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; text-transform: capitalize; display: inline-block; }
+        .badge.pendiente, .badge.recibido { background: var(--beige-claro); color: var(--azul-oscuro); border: 1px solid var(--dorado-institucional); }
+        .badge.en-atención, .badge.en_atencion { background: var(--fondo-general); color: var(--azul-gubernamental); border: 1px solid var(--azul-gubernamental); }
+        .badge.resuelto { background: var(--azul-marino); color: var(--blanco); }
+
+        .prio-badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 800;
+            display: inline-block;
+            line-height: 1.25;
+        }
+        .prio-alta {
+            background-color: #FEF2F2;
+            color: #991B1B;
+            border: 1px solid #DC2626;
+        }
+        .prio-media {
+            background-color: var(--beige-claro);
+            color: var(--azul-oscuro);
+            border: 1px solid var(--dorado-institucional);
+        }
+        .prio-baja {
+            background-color: var(--fondo-general);
+            color: var(--texto-secundario);
+            border: 1px solid var(--borde-institucional);
+        }
+        .prio-sub {
+            display: block;
+            font-size: 10px;
+            font-weight: 600;
+            margin-top: 2px;
+            opacity: 0.85;
+        }
+
+        select {
+            padding: 7px 8px;
+            border-radius: 4px;
+            border: 1px solid var(--borde-institucional);
+            background-color: var(--blanco);
+            color: var(--azul-marino);
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            width: 100%;
+        }
+        select:hover, select:focus { border-color: var(--azul-marino); outline: none; }
+
+        .btn-evidencia {
+            background-color: var(--azul-marino);
+            color: var(--blanco);
+            border: none;
+            padding: 8px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 6px;
+            display: inline-block;
+            width: 100%;
+            transition: background-color 0.2s ease;
+        }
+        .btn-evidencia:hover { background-color: var(--azul-gubernamental); }
+
+        #map { height: 460px; width: 100%; border-radius: 5px; border: 1px solid var(--borde-institucional); z-index: 1; }
+        .leyenda-mapa {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 10px;
+            font-size: 11.5px;
+            color: var(--texto-secundario);
+        }
+        .leyenda-item { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
+        .punto-leyenda { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+
+        .btn-mapa-completo {
+            background-color: var(--azul-marino);
+            color: var(--blanco);
+            border: none;
+            padding: 11px 14px;
+            border-radius: 5px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: background-color 0.2s ease;
+        }
+        .btn-mapa-completo:hover { background-color: var(--azul-gubernamental); }
+
+        /* Modal de Revisión y Control de Reportes */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(16, 36, 61, 0.72);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+            padding: 14px;
+        }
+        .modal-overlay.abierto { display: flex; }
+        .modal-card {
+            background: var(--blanco);
+            width: 100%;
+            max-width: 880px;
+            max-height: 92vh;
+            overflow-y: auto;
+            border-radius: 6px;
+            border-top: 5px solid var(--dorado-institucional);
+            box-shadow: 0 12px 32px rgba(16, 36, 61, 0.25);
+        }
+        .modal-header {
+            padding: 14px 18px;
+            border-bottom: 1px solid var(--borde-institucional);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            background-color: var(--fondo-general);
+        }
+        .modal-header h3 { font-size: 15px; font-weight: 800; color: var(--azul-marino); word-break: break-word; }
+        .btn-cerrar-modal {
+            background: var(--blanco);
+            border: 1px solid var(--borde-institucional);
+            color: var(--texto-principal);
+            font-weight: 700;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        .modal-body { padding: 18px; }
+        .evidencia-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            align-items: start;
+        }
+
+        .foto-box {
+            border: 1px solid var(--borde-institucional);
+            border-radius: 6px;
+            background: var(--fondo-general);
+            padding: 12px;
+            text-align: center;
+        }
+        .foto-box img.principal {
+            width: 100%;
+            max-height: 290px;
+            object-fit: cover;
+            border-radius: 4px;
+            border: 1px solid var(--borde-institucional);
+            background: var(--blanco);
+            cursor: zoom-in;
+        }
+        .miniaturas-lista {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+            justify-content: center;
+        }
+        .miniaturas-lista img {
+            width: 60px;
+            height: 46px;
+            object-fit: cover;
+            border-radius: 4px;
+            border: 2px solid var(--borde-institucional);
+            cursor: pointer;
+        }
+        .miniaturas-lista img.activa { border-color: var(--dorado-institucional); }
+
+        .botones-control-foto {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 12px;
+        }
+        .btn-borrar-foto {
+            background-color: var(--blanco);
+            color: var(--rojo-alerta);
+            border: 1px solid var(--rojo-alerta);
+            padding: 10px 12px;
+            border-radius: 4px;
+            font-size: 12.5px;
+            font-weight: 700;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.2s ease;
+        }
+        .btn-borrar-foto:hover { background-color: #FEF2F2; }
+        .btn-borrar-reporte {
+            background-color: var(--rojo-alerta);
+            color: var(--blanco);
+            border: 1px solid var(--rojo-alerta);
+            padding: 10px 12px;
+            border-radius: 4px;
+            font-size: 12.5px;
+            font-weight: 700;
+            cursor: pointer;
+            width: 100%;
+            transition: background-color 0.2s ease;
+        }
+        .btn-borrar-reporte:hover { background-color: var(--rojo-hover); }
+
+        .ficha-datos { display: flex; flex-direction: column; gap: 10px; }
+        .dato-item {
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--borde-institucional);
+        }
+        .dato-item label {
+            display: block;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.7px;
+            color: var(--texto-secundario);
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+        .dato-item span, .dato-item p {
+            font-size: 13.5px;
+            color: var(--texto-principal);
+            font-weight: 600;
+            word-break: break-word;
+        }
+
+        .ubicacion-acciones {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        .btn-ver-mapa {
+            background-color: var(--azul-marino);
+            color: var(--blanco);
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: background-color 0.2s ease;
+        }
+        .btn-ver-mapa:hover { background-color: var(--azul-gubernamental); }
+        .btn-google-maps {
+            background-color: var(--beige-claro);
+            color: var(--azul-oscuro);
+            border: 1px solid var(--dorado-institucional);
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 700;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: background-color 0.2s ease;
+        }
+        .btn-google-maps:hover { background-color: #EBE2CE; }
+
+        /* Modal de Mapa Completo */
+        .modal-mapa-full {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(16, 36, 61, 0.85);
+            z-index: 10000;
+            flex-direction: column;
+            padding: 16px;
+        }
+        .modal-mapa-full.abierto { display: flex; }
+        .modal-mapa-card {
+            background: var(--blanco);
+            width: 100%;
+            height: 100%;
+            border-radius: 6px;
+            border-top: 5px solid var(--dorado-institucional);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 12px 36px rgba(0,0,0,0.35);
+        }
+        .modal-mapa-header {
+            padding: 12px 18px;
+            background: var(--fondo-general);
+            border-bottom: 1px solid var(--borde-institucional);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .modal-mapa-header h3 {
+            font-size: 15px;
+            font-weight: 800;
+            color: var(--azul-marino);
+        }
+        .modal-mapa-acciones {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .btn-reajustar-puntos {
+            background-color: var(--beige-claro);
+            color: var(--azul-oscuro);
+            border: 1px solid var(--dorado-institucional);
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .btn-reajustar-puntos:hover { background-color: #EBE2CE; }
+        #map-full {
+            flex: 1;
+            width: 100%;
+            min-height: 300px;
+        }
+        .modal-mapa-footer {
+            padding: 10px 18px;
+            background: var(--blanco);
+            border-top: 1px solid var(--borde-institucional);
+        }
+
+        .footer-institucional {
+            background-color: var(--azul-oscuro);
+            color: #D6DFEB;
+            padding: 20px 0;
+            margin-top: auto;
+            border-top: 3px solid var(--dorado-institucional);
+            font-size: 12px;
+            width: 100%;
+        }
+        .footer-inner {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .footer-inner strong { color: var(--blanco); letter-spacing: 0.8px; }
+        .footer-links { display: flex; gap: 18px; }
+        .footer-links a { color: #D6DFEB; text-decoration: none; font-size: 12px; }
+        .footer-links a:hover { color: var(--dorado-institucional); }
+
+        @media (max-width: 1024px) {
+            .content-grid { grid-template-columns: minmax(0, 1fr); }
+        }
+
+        @media (max-width: 768px) {
+            .container-institucional { padding: 0 14px; }
+            .main-container { padding: 0 14px; margin-top: -20px; }
+
+            .top-bar { font-size: 10px; letter-spacing: 0.8px; }
+            .top-bar-inner { flex-direction: column; gap: 3px; text-align: center; }
+
+            .header-inner { justify-content: center; text-align: center; }
+            .brand { justify-content: center; text-align: left; }
+            .nav-institucional { width: 100%; justify-content: center; gap: 14px; }
+            .btn-admin { width: 100%; text-align: center; }
+
+            .hero-band { padding: 30px 0 42px 0; }
+            .hero-center h2 { font-size: 26px; }
+            .hero-center p { font-size: 13px; }
+
+            .metrics-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 10px;
+                margin-bottom: 16px;
+            }
+            .card { padding: 14px 12px; }
+            .card h3 { font-size: 10px; }
+            .card p { font-size: 24px; margin-top: 4px; }
+            .card .sub-metric { font-size: 11px; }
+
+            .panel-box { padding: 14px; }
+
+            table, thead, tbody, th, td, tr { display: block; width: 100%; }
+            thead { display: none; }
+            tbody tr {
+                border: 1px solid var(--borde-institucional);
+                border-left: 4px solid var(--azul-marino);
+                border-radius: 6px;
+                padding: 12px;
+                margin-bottom: 12px;
+                background: var(--blanco);
+                box-shadow: 0 2px 6px rgba(16, 36, 61, 0.04);
+            }
+            tbody td {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                gap: 10px;
+                padding: 7px 0;
+                border-bottom: 1px solid #F1F5F9;
+                text-align: right;
+            }
+            tbody td:last-child {
+                border-bottom: none;
+                flex-direction: column;
+                align-items: stretch;
+                padding-top: 10px;
+                margin-top: 4px;
+            }
+            tbody td::before {
+                content: attr(data-label);
+                font-size: 11px;
+                font-weight: 700;
+                text-transform: uppercase;
+                color: var(--texto-secundario);
+                text-align: left;
+                flex-shrink: 0;
+            }
+            tbody td:last-child::before { display: none; }
+
+            #map { height: 340px; }
+
+            .evidencia-grid { grid-template-columns: 1fr; }
+            .ubicacion-acciones { flex-direction: column; }
+            .btn-ver-mapa, .btn-google-maps { width: 100%; justify-content: center; }
+            .footer-inner { flex-direction: column; text-align: center; }
+        }
+
+        .btn-ver-folios {
+            background-color: var(--beige-claro);
+            color: var(--azul-oscuro);
+            border: 1px solid var(--dorado-institucional);
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: background-color 0.2s ease;
+            white-space: nowrap;
+        }
+        .btn-ver-folios:hover { background-color: #EBE2CE; }
+
+        .lista-folios-container {
+            max-height: 50vh;
+            overflow-y: auto;
+            border: 1px solid var(--borde-institucional);
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+        .folio-item-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 14px;
+            border-bottom: 1px solid var(--borde-institucional);
+            background: var(--blanco);
+            gap: 10px;
+        }
+        .folio-item-row:hover { background: #F8FAFC; }
+        .folio-info-txt { font-size: 13px; }
+        .folio-info-txt strong { color: var(--azul-marino); display: block; font-family: monospace; font-size: 14px; }
+        .folio-info-txt span { color: var(--texto-secundario); font-size: 11.5px; }
+        .btn-copiar-folio {
+            background-color: var(--azul-marino);
+            color: var(--blanco);
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 11.5px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .btn-copiar-folio:hover { background-color: var(--azul-gubernamental); }
+
+    </style>
+</head>
+<body>
+    <div class="top-bar">
+        <div class="container-institucional top-bar-inner">
+            <span>PORTAL DE ATENCIÓN CIUDADANA</span>
+        </div>
+    </div>
+
+    <header class="header-institucional">
+        <div class="container-institucional header-inner">
+            <a href="https://10.70.2.13/" class="brand">
+                <div class="logo-circular">V3</div>
+                <div class="brand-text">
+                    <h1>VERACRUZ360</h1>
+                    <p>Portal Municipal de Atención Ciudadana</p>
+                </div>
+            </a>
+            <nav class="nav-institucional">
+                <a href="https://10.70.2.13/" class="nav-link">Inicio</a>
+                <a href="https://10.70.2.13/seguimiento" class="nav-link">Seguimiento</a>
+            </nav>
+        </div>
+    </header>
+
+    <section class="hero-band">
+        <div class="container-institucional">
+            <div class="hero-etiqueta">PANEL ADMINISTRATIVO</div>
+            <div class="hero-center">
+                <h2>Gestión de<br>reportes ciudadanos<span class="punto-dorado">.</span></h2>
+                <p>Priorización inteligente por concentración geográfica (radio de 100 m), control de evidencia fotográfica y seguimiento en tiempo real.</p>
+            </div>
+        </div>
+    </section>
+
+    <main class="main-container">
+        <div class="metrics-grid">
+            <div class="card">
+                <h3>Total Reportes</h3>
+                <p id="metric-total">0</p>
+                <span class="sub-metric">Incidencias registradas</span>
+            </div>
+            <div class="card">
+                <h3>Pendientes</h3>
+                <p id="metric-pendientes">0</p>
+                <span class="sub-metric">En espera de revisión</span>
+            </div>
+            <div class="card">
+                <h3>En Atención</h3>
+                <p id="metric-en-atencion">0</p>
+                <span class="sub-metric">Canalizados a cuadrilla</span>
+            </div>
+            <div class="card">
+                <h3>Resueltos</h3>
+                <p id="metric-resueltos">0</p>
+                <span class="sub-metric">Reportes concluidos</span>
+            </div>
+        </div>
+
+        <div class="content-grid">
+            <div class="panel-box">
+                <div class="panel-step-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                    <div style="display:flex; align-items:flex-start; gap:12px;">
+                        <div class="step-badge">01</div>
+                        <div>
+                            <h3>Control operativo de reportes</h3>
+                            <p>Ordenados por prioridad según concentración de incidencias en un radio de 100 metros.</p>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-ver-folios" onclick="abrirModalFolios()">📋 Ver todos los folios</button>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Folio</th>
+                                <th>Categoría</th>
+                                <th>Prioridad (100 m)</th>
+                                <th>Estado</th>
+                                <th>Dependencia</th>
+                                <th>Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-reportes-body">
+                            <tr><td colspan="6">Cargando reportes...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="panel-box" id="panel-mapa">
+                <div class="panel-step-header">
+                    <div class="step-badge">02</div>
+                    <div>
+                        <h3>Ubicación geográfica</h3>
+                        <p>Los radios de 100 metros muestran zonas con múltiples reportes cercanos.</p>
+                    </div>
+                </div>
+                <div id="map"></div>
+                <div class="leyenda-mapa">
+                    <span class="leyenda-item"><span class="punto-leyenda" style="background:#DC2626;"></span> Prioritario (16+ en 100 m)</span>
+                    <span class="leyenda-item"><span class="punto-leyenda" style="background:#C7A45B;"></span> Medio prioritario (6-15 en 100 m)</span>
+                    <span class="leyenda-item"><span class="punto-leyenda" style="background:#1E4773;"></span> Poco prioritario (3-5 en 100 m)</span>
+                </div>
+                <button type="button" class="btn-mapa-completo" onclick="abrirMapaCompleto()">
+                    🗺️ Ver mapa completo (todos los puntos)
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal de Revisión y Control de Reportes -->
+    <div id="modal-evidencia" class="modal-overlay" onclick="if(event.target === this) cerrarModalEvidencia()">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>Detalle y Control del Reporte · <span id="ev-titulo-folio"></span></h3>
+                <button class="btn-cerrar-modal" onclick="cerrarModalEvidencia()">Cerrar ✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="evidencia-grid">
+                    <div class="foto-box">
+                        <a id="ev-foto-link" href="#" target="_blank" title="Abrir imagen en tamaño completo">
+                            <img id="ev-foto" class="principal" src="" alt="Fotografía del reporte">
+                        </a>
+                        <div id="ev-miniaturas" class="miniaturas-lista"></div>
+
+                        <div class="botones-control-foto">
+                            <button id="btn-eliminar-foto" class="btn-borrar-foto" onclick="eliminarFotografiaActual()">Eliminar fotografía</button>
+                            <button id="btn-eliminar-reporte" class="btn-borrar-reporte" onclick="eliminarReporteActual()">Eliminar reporte completo</button>
+                        </div>
+                    </div>
+
+                    <div class="ficha-datos">
+                        <div class="dato-item">
+                            <label>Folio del reporte</label>
+                            <span id="ev-folio"></span>
+                        </div>
+                        <div class="dato-item">
+                            <label>Categoría</label>
+                            <span id="ev-categoria"></span>
+                        </div>
+                        <div class="dato-item">
+                            <label>Nivel de Prioridad (Densidad ≤ 100 m)</label>
+                            <span id="ev-prioridad"></span>
+                        </div>
+                        <div class="dato-item">
+                            <label>Descripción</label>
+                            <p id="ev-descripcion"></p>
+                        </div>
+                        <div class="dato-item">
+                            <label>Ubicación</label>
+                            <span id="ev-ubicacion"></span>
+                            <div id="ev-ubicacion-botones" class="ubicacion-acciones"></div>
+                        </div>
+                        <div class="dato-item">
+                            <label>Fecha de registro</label>
+                            <span id="ev-fecha"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Mapa Completo con todos los puntos -->
+    <div id="modal-mapa-completo" class="modal-mapa-full" onclick="if(event.target === this) cerrarMapaCompleto()">
+        <div class="modal-mapa-card">
+            <div class="modal-mapa-header">
+                <h3>Mapa General de Incidencias · Todos los Reportes (<span id="total-puntos-mapa">0</span>)</h3>
+                <div class="modal-mapa-acciones">
+                    <button type="button" class="btn-reajustar-puntos" onclick="ajustarVistaTodosLosPuntos()">Centrar todos los puntos</button>
+                    <button type="button" class="btn-cerrar-modal" onclick="cerrarMapaCompleto()">Cerrar mapa ✕</button>
+                </div>
+            </div>
+            <div id="map-full"></div>
+            <div class="modal-mapa-footer">
+                <div class="leyenda-mapa" style="margin-top:0;">
+                    <span class="leyenda-item"><span class="punto-leyenda" style="background:#DC2626;"></span> Prioritario (16+ en 100 m)</span>
+                    <span class="leyenda-item"><span class="punto-leyenda" style="background:#C7A45B;"></span> Medio prioritario (6-15 en 100 m)</span>
+                    <span class="leyenda-item"><span class="punto-leyenda" style="background:#1E4773;"></span> Poco prioritario (3-5 en 100 m)</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Modal para ver todos los folios y códigos de seguimiento -->
+    <div id="modal-todos-folios" class="modal-overlay" onclick="if(event.target === this) cerrarModalFolios()">
+        <div class="modal-card" style="max-width: 650px;">
+            <div class="modal-header">
+                <h3>Listado General de Folios y Seguimiento (<span id="total-folios-modal">0</span>)</h3>
+                <button class="btn-cerrar-modal" onclick="cerrarModalFolios()">Cerrar ✕</button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size: 12.5px; color: var(--texto-secundario); margin-bottom: 12px;">
+                    Utiliza estos folios para consultar el estatus en el portal ciudadano o realizar auditorías operativas.
+                </p>
+                <div class="lista-folios-container" id="contenedor-lista-folios">
+                    <!-- Dinámico -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer-institucional">
+        <div class="container-institucional footer-inner">
+            <div>
+                <strong>VERACRUZ360</strong> · Portal Municipal de Atención Ciudadana
+            </div>
+            <div class="footer-links">
+                <a href="https://10.70.2.13/">Inicio</a>
+                <a href="https://10.70.2.13/seguimiento">Seguimiento</a>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const map = L.map('map').setView([19.1738, -96.1342], 12);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+        let markersGroup = L.layerGroup().addTo(map);
+        let markersPorFolio = {};
+
+        let reportesCache = [];
+        let folioSeleccionado = null;
+        let rutaFotoActual = null;
+
+        let mapFull = null;
+        let markersFullGroup = null;
+        let boundsTodosPuntos = null;
+
+        function normalizarRutaImagen(ruta) {
+            if (!ruta) return '';
+            return ruta.startsWith('/') ? ruta : `/${ruta}`;
+        }
+
+        async function cargarResumen() {
+            try {
+                const res = await fetch('/api/reportes/resumen');
+                const data = await res.json();
+                document.getElementById('metric-total').innerText = data.total || 0;
+                document.getElementById('metric-pendientes').innerText = data.pendientes || 0;
+                document.getElementById('metric-en-atencion').innerText = data.en_atencion || 0;
+                document.getElementById('metric-resueltos').innerText = data.resueltos || 0;
+            } catch (err) { console.error('Error cargando métricas:', err); }
+        }
+
+        async function cargarReportes() {
+            try {
+                const res = await fetch('/api/reportes');
+                const reportes = await res.json();
+                reportesCache = reportes;
+                const tbody = document.getElementById('tabla-reportes-body');
+                tbody.innerHTML = '';
+                markersGroup.clearLayers();
+                markersPorFolio = {};
+
+                reportes.forEach(r => {
+                    const fotos = r.todas_las_fotos ? r.todas_las_fotos.split('||').filter(Boolean) : [];
+                    const textoBoton = fotos.length > 0 ? `Revisar Reporte (${fotos.length} foto${fotos.length > 1 ? 's' : ''})` : 'Revisar Reporte';
+
+                    const nivel = r.nivel_prioridad || 'baja';
+                    const cercanos = r.reportes_cercanos_30m || 1;
+                    const subTextoPrio = cercanos > 1 ? `${cercanos} reportes en 100 m` : '1 reporte aislado';
+
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td data-label="Folio"><span class="folio-texto">${r.folio}</span></td>
+                        <td data-label="Categoría">${r.categoria}</td>
+                        <td data-label="Prioridad">
+                            <span class="prio-badge prio-${nivel}">
+                                ${r.prioridad}
+                                <span class="prio-sub">${subTextoPrio}</span>
+                            </span>
+                        </td>
+                        <td data-label="Estado"><span class="badge ${r.estado.toLowerCase().replace(' ', '-')}">${r.estado}</span></td>
+                        <td data-label="Dependencia">${r.dependencia_asignada}</td>
+                        <td data-label="Acción">
+                            <select onchange="actualizarEstado('${r.folio}', this.value)">
+                                <option value="" disabled selected>Cambiar Estado</option>
+                                <option value="1">Pendiente</option>
+                                <option value="2">En Atención</option>
+                                <option value="3">Resuelto</option>
+                            </select>
+                            <button class="btn-evidencia" onclick="abrirModalEvidencia('${r.folio}')">${textoBoton}</button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+
+                    if (r.latitud && r.longitud) {
+                        const lat = parseFloat(r.latitud);
+                        const lon = parseFloat(r.longitud);
+
+                        const marker = L.marker([lat, lon])
+                            .bindPopup(`<strong>${r.folio}</strong><br><b>Prioridad:</b> ${r.prioridad} (${subTextoPrio})<br><b>Categoría:</b> ${r.categoria}<br><b>Estado:</b> ${r.estado}<br><b>Comentario:</b> ${r.comentario || 'Sin descripción'}<br><br><button onclick="abrirModalEvidencia('${r.folio}')" style="background:#142E50;color:#fff;border:none;padding:6px 10px;border-radius:4px;cursor:pointer;font-weight:bold;">Revisar Reporte</button>`);
+                        markersGroup.addLayer(marker);
+                        markersPorFolio[r.folio] = marker;
+
+                        if (cercanos >= 3) {
+                            const colorCirculo = nivel === 'alta' ? '#DC2626' : (nivel === 'media' ? '#C7A45B' : '#1E4773');
+                            const circulo = L.circle([lat, lon], {
+                                radius: 100,
+                                color: colorCirculo,
+                                fillColor: colorCirculo,
+                                fillOpacity: 0.14,
+                                weight: 1.5
+                            });
+                            markersGroup.addLayer(circulo);
+                        }
+                    }
+                });
+            } catch (err) { console.error('Error cargando reportes:', err); }
+        }
+
+        function enfocarPuntoEnMapa(folio, lat, lon) {
+            cerrarModalEvidencia();
+            const panelMapa = document.getElementById('panel-mapa');
+            if (panelMapa) {
+                panelMapa.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+            setTimeout(() => {
+                map.invalidateSize();
+                map.flyTo([parseFloat(lat), parseFloat(lon)], 18, { animate: true, duration: 1.0 });
+                const marker = markersPorFolio[folio];
+                if (marker) {
+                    setTimeout(() => marker.openPopup(), 950);
+                }
+            }, 300);
+        }
+
+        function ajustarVistaTodosLosPuntos() {
+            if (!mapFull) return;
+            if (boundsTodosPuntos && boundsTodosPuntos.isValid()) {
+                mapFull.fitBounds(boundsTodosPuntos, { padding: [45, 45], maxZoom: 16 });
+            } else {
+                mapFull.setView([19.1738, -96.1342], 12);
+            }
+        }
+
+        function abrirMapaCompleto() {
+            const modal = document.getElementById('modal-mapa-completo');
+            modal.classList.add('abierto');
+
+            if (!mapFull) {
+                mapFull = L.map('map-full').setView([19.1738, -96.1342], 12);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '&copy; OpenStreetMap contributors'
+                }).addTo(mapFull);
+                markersFullGroup = L.layerGroup().addTo(mapFull);
+            }
+
+            markersFullGroup.clearLayers();
+            const coords = [];
+
+            reportesCache.forEach(r => {
+                if (r.latitud && r.longitud) {
+                    const lat = parseFloat(r.latitud);
+                    const lon = parseFloat(r.longitud);
+                    coords.push([lat, lon]);
+
+                    const nivel = r.nivel_prioridad || 'baja';
+                    const cercanos = r.reportes_cercanos_30m || 1;
+                    const subTextoPrio = cercanos > 1 ? `${cercanos} reportes en 100 m` : '1 reporte aislado';
+
+                    const marker = L.marker([lat, lon]).bindPopup(
+                        `<strong>${r.folio}</strong><br>` +
+                        `<b>Prioridad:</b> ${r.prioridad} (${subTextoPrio})<br>` +
+                        `<b>Categoría:</b> ${r.categoria}<br>` +
+                        `<b>Estado:</b> ${r.estado}<br>` +
+                        `<b>Comentario:</b> ${r.comentario || 'Sin descripción'}<br><br>` +
+                        `<button onclick="cerrarMapaCompleto(); abrirModalEvidencia('${r.folio}')" style="background:#142E50;color:#fff;border:none;padding:6px 10px;border-radius:4px;cursor:pointer;font-weight:bold;">Revisar Reporte</button>`
+                    );
+                    markersFullGroup.addLayer(marker);
+
+                    if (cercanos >= 3) {
+                        const colorCirculo = nivel === 'alta' ? '#DC2626' : (nivel === 'media' ? '#C7A45B' : '#1E4773');
+                        const circulo = L.circle([lat, lon], {
+                            radius: 100,
+                            color: colorCirculo,
+                            fillColor: colorCirculo,
+                            fillOpacity: 0.14,
+                            weight: 1.5
+                        });
+                        markersFullGroup.addLayer(circulo);
+                    }
+                }
+            });
+
+            document.getElementById('total-puntos-mapa').innerText = coords.length;
+            boundsTodosPuntos = coords.length > 0 ? L.latLngBounds(coords) : null;
+
+            setTimeout(() => {
+                mapFull.invalidateSize();
+                ajustarVistaTodosLosPuntos();
+            }, 200);
+        }
+
+        function cerrarMapaCompleto() {
+            document.getElementById('modal-mapa-completo').classList.remove('abierto');
+        }
+
+        async function actualizarEstado(folio, nuevoEstadoId) {
+            try {
+                const res = await fetch(`/api/reportes/${folio}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ estado_id: nuevoEstadoId })
+                });
+                if (res.ok) {
+        function abrirModalFolios() {
+            const modal = document.getElementById('modal-todos-folios');
+            const contenedor = document.getElementById('contenedor-lista-folios');
+            document.getElementById('total-folios-modal').innerText = reportesCache.length;
+            contenedor.innerHTML = '';
+
+            if (reportesCache.length === 0) {
+                contenedor.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--texto-secundario);">No hay reportes registrados.</div>';
+            } else {
+                reportesCache.forEach(r => {
+                    const row = document.createElement('div');
+                    row.className = 'folio-item-row';
+                    row.innerHTML = `
+                        <div class="folio-info-txt">
+                            <strong>${r.folio}</strong>
+                            <span>Categoría: ${r.categoria} · Estado: ${r.estado} · Prioridad: ${r.prioridad}</span>
+                        </div>
+                        <button type="button" class="btn-copiar-folio" onclick="copiarFolio('${r.folio}')">Copiar Folio</button>
+                    `;
+                    contenedor.appendChild(row);
+                });
+            }
+            modal.classList.add('abierto');
+        }
+
+        function cerrarModalFolios() {
+            document.getElementById('modal-todos-folios').classList.remove('abierto');
+        }
+
+        function copiarFolio(folio) {
+            navigator.clipboard.writeText(folio).then(() => {
+                alert(`Folio copiado al portapapeles: ${folio}`);
+            }).catch(err => {
+                console.error('Error al copiar folio:', err);
+            });
+        }
+
+        cargarResumen(); cargarReportes(); }
+            } catch (err) { console.error('Error actualizando reporte:', err); }
+        }
+
+        function obtenerImagenFallback(categoria) {
+            const texto = encodeURIComponent(`Sin fotografía (${categoria})`);
+            return `data:image/svg+xml;charset=UTF-8,<svg xmlns="http://www.w3.org/2000/svg" width="500" height="300"><rect width="100%" height="100%" fill="%23F3F5F8"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%236B7787" font-family="Arial" font-size="16">${texto}</text></svg>`;
+        }
+
+        function seleccionarFotoPrincipal(rutaOriginalBD, miniaturaEl) {
+            rutaFotoActual = rutaOriginalBD;
+            const rutaNormalizada = normalizarRutaImagen(rutaOriginalBD);
+            const imgEl = document.getElementById('ev-foto');
+            const linkEl = document.getElementById('ev-foto-link');
+            imgEl.src = rutaNormalizada;
+            linkEl.href = rutaNormalizada;
+
+            document.querySelectorAll('#ev-miniaturas img').forEach(m => m.classList.remove('activa'));
+            if (miniaturaEl) miniaturaEl.classList.add('activa');
+        }
+
+        function abrirModalEvidencia(folio) {
+            const rep = reportesCache.find(item => item.folio === folio);
+            if (!rep) return;
+
+            folioSeleccionado = folio;
+            document.getElementById('ev-titulo-folio').innerText = rep.folio;
+            document.getElementById('ev-folio').innerText = rep.folio;
+            document.getElementById('ev-categoria').innerText = rep.categoria;
+
+            const cercanos = rep.reportes_cercanos_30m || 1;
+            const detallePrio = cercanos > 1 ? ` (${cercanos} incidencias en radio de 100 m)` : ' (Reporte único en radio de 100 m)';
+            document.getElementById('ev-prioridad').innerText = `${rep.prioridad}${detallePrio}`;
+
+            document.getElementById('ev-descripcion').innerText = rep.comentario || 'Sin descripción registrada';
+            document.getElementById('ev-fecha').innerText = rep.fecha || 'No disponible';
+
+            const ubicacionText = document.getElementById('ev-ubicacion');
+            const ubicacionBtns = document.getElementById('ev-ubicacion-botones');
+            ubicacionBtns.innerHTML = '';
+
+            if (rep.latitud && rep.longitud) {
+                ubicacionText.innerText = `Lat: ${rep.latitud}, Lon: ${rep.longitud} (Veracruz, Ver.)`;
+                ubicacionBtns.innerHTML = `
+                    <button type="button" class="btn-ver-mapa" onclick="enfocarPuntoEnMapa('${rep.folio}', ${rep.latitud}, ${rep.longitud})">
+                        📍 Ubicar punto en el mapa
+                    </button>
+                    <a class="btn-google-maps" href="https://www.google.com/maps?q=${rep.latitud},${rep.longitud}" target="_blank" rel="noopener">
+                        Abrir en Google Maps ↗
+                    </a>
+                `;
+            } else {
+                ubicacionText.innerText = 'Ubicación no especificada';
+            }
+
+            const fotos = rep.todas_las_fotos ? rep.todas_las_fotos.split('||').filter(Boolean) : [];
+            const imgEl = document.getElementById('ev-foto');
+            const linkEl = document.getElementById('ev-foto-link');
+            const miniaturasCont = document.getElementById('ev-miniaturas');
+            const btnBorrarFoto = document.getElementById('btn-eliminar-foto');
+            miniaturasCont.innerHTML = '';
+
+            if (fotos.length > 0) {
+                rutaFotoActual = fotos[0];
+                const primeraRuta = normalizarRutaImagen(fotos[0]);
+                imgEl.src = primeraRuta;
+                linkEl.href = primeraRuta;
+                imgEl.onerror = () => { imgEl.src = obtenerImagenFallback(rep.categoria); };
+                btnBorrarFoto.style.display = 'block';
+
+                if (fotos.length > 1) {
+                    fotos.forEach((f, idx) => {
+                        const rutaNorm = normalizarRutaImagen(f);
+                        const thumb = document.createElement('img');
+                        thumb.src = rutaNorm;
+                        if (idx === 0) thumb.classList.add('activa');
+                        thumb.onclick = () => seleccionarFotoPrincipal(f, thumb);
+                        miniaturasCont.appendChild(thumb);
+                    });
+                }
+            } else {
+                rutaFotoActual = null;
+                const fallback = obtenerImagenFallback(rep.categoria);
+                imgEl.src = fallback;
+                linkEl.href = '#';
+                btnBorrarFoto.style.display = 'none';
+            }
+
+            document.getElementById('modal-evidencia').classList.add('abierto');
+        }
+
+        function cerrarModalEvidencia() {
+            document.getElementById('modal-evidencia').classList.remove('abierto');
+            folioSeleccionado = null;
+            rutaFotoActual = null;
+        }
+
+        async function eliminarFotografiaActual() {
+            if (!folioSeleccionado || !rutaFotoActual) return;
+            const confirmar = confirm(`¿Seguro que deseas eliminar permanentemente esta fotografía del servidor y de la base de datos?`);
+            if (!confirmar) return;
+
+            try {
+                const res = await fetch(`/api/reportes/${folioSeleccionado}/eliminar-foto`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ruta_archivo: rutaFotoActual })
+                });
+                if (res.ok) {
+                    const folioTemp = folioSeleccionado;
+                    await cargarReportes();
+                    abrirModalEvidencia(folioTemp);
+                } else {
+                    alert('No se pudo eliminar la fotografía.');
+                }
+            } catch (err) {
+                console.error('Error eliminando fotografía:', err);
+            }
+        }
+
+        async function eliminarReporteActual() {
+            if (!folioSeleccionado) return;
+            const confirmar = confirm(`¿Eliminar por completo el reporte ${folioSeleccionado} junto con todas sus fotografías desde la raíz? Esta acción no se puede deshacer.`);
+            if (!confirmar) return;
+
+            try {
+                const res = await fetch(`/api/reportes/${folioSeleccionado}`, {
+                    method: 'DELETE'
+                });
+                if (res.ok) {
+                    cerrarModalEvidencia();
+                    await
+        function abrirModalFolios() {
+            const modal = document.getElementById('modal-todos-folios');
+            const contenedor = document.getElementById('contenedor-lista-folios');
+            document.getElementById('total-folios-modal').innerText = reportesCache.length;
+            contenedor.innerHTML = '';
+
+            if (reportesCache.length === 0) {
+                contenedor.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--texto-secundario);">No hay reportes registrados.</div>';
+            } else {
+                reportesCache.forEach(r => {
+                    const row = document.createElement('div');
+                    row.className = 'folio-item-row';
+                    row.innerHTML = `
+                        <div class="folio-info-txt">
+                            <strong>${r.folio}</strong>
+                            <span>Categoría: ${r.categoria} · Estado: ${r.estado} · Prioridad: ${r.prioridad}</span>
+                        </div>
+                        <button type="button" class="btn-copiar-folio" onclick="copiarFolio('${r.folio}')">Copiar Folio</button>
+                    `;
+                    contenedor.appendChild(row);
+                });
+            }
+            modal.classList.add('abierto');
+        }
+
+        function cerrarModalFolios() {
+            document.getElementById('modal-todos-folios').classList.remove('abierto');
+        }
+
+        function copiarFolio(folio) {
+            navigator.clipboard.writeText(folio).then(() => {
+                alert(`Folio copiado al portapapeles: ${folio}`);
+            }).catch(err => {
+                console.error('Error al copiar folio:', err);
+            });
+        }
+
+        cargarResumen();
+                    await cargarReportes();
+                } else {
+                    alert('No se pudo eliminar el reporte.');
+                }
+            } catch (err) {
+                console.error('Error eliminando reporte:', err);
+            }
+        }
+
+
+        function abrirModalFolios() {
+            const modal = document.getElementById('modal-todos-folios');
+            const contenedor = document.getElementById('contenedor-lista-folios');
+            document.getElementById('total-folios-modal').innerText = reportesCache.length;
+            contenedor.innerHTML = '';
+
+            if (reportesCache.length === 0) {
+                contenedor.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--texto-secundario);">No hay reportes registrados.</div>';
+            } else {
+                reportesCache.forEach(r => {
+                    const row = document.createElement('div');
+                    row.className = 'folio-item-row';
+                    row.innerHTML = `
+                        <div class="folio-info-txt">
+                            <strong>${r.folio}</strong>
+                            <span>Categoría: ${r.categoria} · Estado: ${r.estado} · Prioridad: ${r.prioridad}</span>
+                        </div>
+                        <button type="button" class="btn-copiar-folio" onclick="copiarFolio('${r.folio}')">Copiar Folio</button>
+                    `;
+                    contenedor.appendChild(row);
+                });
+            }
+            modal.classList.add('abierto');
+        }
+
+        function cerrarModalFolios() {
+            document.getElementById('modal-todos-folios').classList.remove('abierto');
+        }
+
+        function copiarFolio(folio) {
+            navigator.clipboard.writeText(folio).then(() => {
+                alert(`Folio copiado al portapapeles: ${folio}`);
+            }).catch(err => {
+                console.error('Error al copiar folio:', err);
+            });
+        }
+
+        cargarResumen();
+        cargarReportes();
+    </script>
+</body>
+</html>

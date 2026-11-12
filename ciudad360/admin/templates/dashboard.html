@@ -1,0 +1,280 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CIUDAD 360 | Panel Administrativo</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+        body {
+            background: #f1f5f9;
+            font-family: Arial, sans-serif;
+        }
+
+        .sidebar {
+            background: #10243e;
+            color: white;
+            min-height: 100vh;
+            padding: 25px 18px;
+        }
+
+        .sidebar h3 {
+            font-weight: bold;
+            color: #38bdf8;
+        }
+
+        .sidebar p {
+            margin-top: 30px;
+            color: #cbd5e1;
+        }
+
+        .main-content {
+            padding: 30px;
+        }
+
+        .stat-card {
+            border: none;
+            border-radius: 14px;
+            padding: 20px;
+            box-shadow: 0 3px 12px #0000000d;
+        }
+
+        .stat-number {
+            font-size: 30px;
+            font-weight: bold;
+        }
+
+        .table-container {
+            background: white;
+            border-radius: 14px;
+            padding: 22px;
+            margin-top: 25px;
+            box-shadow: 0 3px 12px #0000000d;
+        }
+
+        .table th {
+            background: #eaf0f7;
+            white-space: nowrap;
+        }
+
+        .badge-urgente {
+            background: #dc2626;
+        }
+
+        .badge-alta {
+            background: #f97316;
+        }
+
+        .badge-media {
+            background: #eab308;
+            color: #222;
+        }
+
+        .badge-baja {
+            background: #16a34a;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container-fluid">
+    <div class="row">
+
+        <!-- Menú lateral -->
+        <aside class="col-md-2 sidebar">
+            <h3>CIUDAD 360</h3>
+            <p>Panel administrativo</p>
+
+            <hr>
+
+            <div>📊 Dashboard</div>
+            <div class="mt-3">📋 Reportes ciudadanos</div>
+            <div class="mt-3">📍 Ubicaciones</div>
+            <div class="mt-3">⚙️ Administración</div>
+        </aside>
+
+        <!-- Contenido -->
+        <main class="col-md-10 main-content">
+
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2>Panel de control</h2>
+                    <p class="text-muted">
+                        Gestión de reportes ciudadanos
+                    </p>
+                </div>
+
+                <span class="badge bg-success">
+                    Sistema operativo
+                </span>
+            </div>
+
+            <!-- Mensajes -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endwith %}
+
+            <!-- Estadísticas -->
+            <div class="row g-3">
+
+                <div class="col-md-4 col-lg">
+                    <div class="card stat-card">
+                        <div class="text-muted">Total reportes</div>
+                        <div class="stat-number">
+                            {{ estadisticas.total or 0 }}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4 col-lg">
+                    <div class="card stat-card">
+                        <div class="text-muted">Recibidos</div>
+                        <div class="stat-number text-primary">
+                            {{ estadisticas.recibidos or 0 }}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4 col-lg">
+                    <div class="card stat-card">
+                        <div class="text-muted">En atención</div>
+                        <div class="stat-number text-warning">
+                            {{ estadisticas.en_atencion or 0 }}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4 col-lg">
+                    <div class="card stat-card">
+                        <div class="text-muted">Resueltos</div>
+                        <div class="stat-number text-success">
+                            {{ estadisticas.resueltos or 0 }}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4 col-lg">
+                    <div class="card stat-card">
+                        <div class="text-muted">Urgentes</div>
+                        <div class="stat-number text-danger">
+                            {{ estadisticas.urgentes or 0 }}
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Tabla -->
+            <div class="table-container">
+
+                <h4 class="mb-3">Reportes ciudadanos</h4>
+
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+
+                        <thead>
+                            <tr>
+                                <th>Folio</th>
+                                <th>Reporte</th>
+                                <th>Categoría</th>
+                                <th>Prioridad</th>
+                                <th>Ubicación</th>
+                                <th>Estado</th>
+                                <th>Actualizar</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            {% for r in reportes %}
+                            <tr>
+                                <td><strong>{{ r.folio }}</strong></td>
+
+                                <td>
+                                    {{ r.titulo }}
+                                    <br>
+                                    <small class="text-muted">
+                                        {{ r.descripcion }}
+                                    </small>
+                                </td>
+
+                                <td>{{ r.categoria }}</td>
+
+                                <td>
+                                    {% if r.prioridad == 'Urgente' %}
+                                        <span class="badge badge-urgente">Urgente</span>
+                                    {% elif r.prioridad == 'Alta' %}
+                                        <span class="badge badge-alta">Alta</span>
+                                    {% elif r.prioridad == 'Media' %}
+                                        <span class="badge badge-media">Media</span>
+                                    {% else %}
+                                        <span class="badge badge-baja">Baja</span>
+                                    {% endif %}
+                                </td>
+
+                                <td>{{ r.ubicacion or 'Sin ubicación' }}</td>
+
+                                <td>{{ r.estado }}</td>
+
+                                <td>
+                                    <form method="POST"
+                                          action="{{ url_for('actualizar', id=r.id) }}">
+
+                                        <select name="estado"
+                                                class="form-select form-select-sm mb-2">
+
+                                            <option value="Recibido"
+                                                {% if r.estado == 'Recibido' %}selected{% endif %}>
+                                                Recibido
+                                            </option>
+
+                                            <option value="En atención"
+                                                {% if r.estado == 'En atención' %}selected{% endif %}>
+                                                En atención
+                                            </option>
+
+                                            <option value="Resuelto"
+                                                {% if r.estado == 'Resuelto' %}selected{% endif %}>
+                                                Resuelto
+                                            </option>
+
+                                        </select>
+
+                                        <button class="btn btn-primary btn-sm w-100">
+                                            Guardar
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+
+                            {% else %}
+                            <tr>
+                                <td colspan="7" class="text-center">
+                                    No hay reportes registrados.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+
+                    </table>
+                </div>
+
+            </div>
+
+            <footer class="text-center text-muted mt-4">
+                CIUDAD 360 © 2026 | Plataforma de atención ciudadana
+            </footer>
+
+        </main>
+    </div>
+</div>
+
+</body>
+</html>
