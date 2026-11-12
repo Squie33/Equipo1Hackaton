@@ -1,0 +1,19 @@
+{
+  "dependencies": {
+    "@google/genai": "^3.2.0",
+    "bcryptjs": "^3.0.3",
+    "bootstrap": "^5.3.8",
+    "cors": "^2.8.6",
+    "jose": "^6.2.17",
+    "mysql2": "^3.24.6",
+    "next": "^16.4.6",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "type": "module",
+  "scripts": {
+    "dev": "next dev -H 0.0.0.0",
+    "build": "next build",
+    "start": "next start -H 0.0.0.0"
+  }
+}

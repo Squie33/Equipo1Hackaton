@@ -1,0 +1,29 @@
+# Variables de entorno
+.env
+.env.*
+!.env.example
+
+# Node.js
+node_modules/
+.next/
+npm-debug.log*
+
+# Python
+venv/
+.venv/
+__pycache__/
+*.pyc
+
+# Sistema
+.DS_Store
+
+# Archivos temporales de editores
+*.swp
+*.swo
+*~
+
+# Respaldos de bases de datos
+*.sql
+
+# Archivos comprimidos
+*.zip

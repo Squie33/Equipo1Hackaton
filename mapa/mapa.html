@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ciudad360 - Panel de Reportes Ciudadanos</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        :root {
+            --primary: #2563eb;
+            --bg-body: #f1f5f9;
+            --bg-card: #ffffff;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --border-color: #e2e8f0;
+            --status-total: #3b82f6;
+            --status-pending: #ef4444;
+            --status-progress: #f59e0b;
+            --status-resolved: #10b981;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .navbar {
+            background-color: #0f172a;
+            color: #ffffff;
+            padding: 16px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .navbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .navbar-brand i { color: #38bdf8; font-size: 24px; }
+
+        .navbar-brand span {
+            font-weight: 400;
+            color: #94a3b8;
+            font-size: 14px;
+            margin-left: 8px;
+            padding-left: 12px;
+            border-left: 1px solid #334155;
+        }
+
+        .btn-refresh {
+            background-color: #1e293b;
+            color: #e2e8f0;
+            border: 1px solid #334155;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .btn-refresh:hover { background-color: #334155; color: #ffffff; }
+
+        .container {
+            max-width: 1440px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 24px 32px;
+            flex: 1;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 20px;
+            margin-bottom: 28px;
+        }
+
+        .card {
+            background: var(--bg-card);
+            padding: 22px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            border: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: transform 0.2s ease;
+        }
+
+        .card:hover { transform: translateY(-2px); }
+
+        .card-info h3 {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+
+        .card-info p {
+            font-size: 30px;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .card-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+        }
+
+        .card.total .card-icon { background: #eff6ff; color: var(--status-total); }
+        .card.pendientes .card-icon { background: #fef2f2; color: var(--status-pending); }
+        .card.en_atencion .card-icon { background: #fffbeb; color: var(--status-progress); }
+        .card.resueltos .card-icon { background: #ecfdf5; color: var(--status-resolved); }
+
+        .content-grid {
+            display: grid;
+            grid-template-columns: 1.25fr 1fr;
+            gap: 24px;
+        }
+
+        @media (max-width: 1100px) {
+            .content-grid { grid-template-columns: 1fr; }
+        }
+
+        .panel {
+            background: var(--bg-card);
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .panel-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .panel-header h2 {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .filters { display: flex; gap: 10px; }
+
+        .search-input, .filter-select {
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            font-size: 13px;
+            outline: none;
+        }
+
+        .search-input:focus, .filter-select:focus { border-color: var(--primary); }
+
+        .table-wrapper {
+            overflow-x: auto;
+            max-height: 540px;
+            overflow-y: auto;
+        }
+
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+
+        th {
+            background: #f8fafc;
+            color: var(--text-muted);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 11px;
+            padding: 14px 16px;
+            text-align: left;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        td {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border-color);
+            vertical-align: middle;
+        }
+
+        tbody tr { transition: background-color 0.15s ease; cursor: pointer; }
+        tbody tr:hover { background-color: #f8fafc; }
+
+        .folio-tag {
+            font-family: monospace;
+            font-weight: 600;
+            background: #f1f5f9;
+            padding: 4px 8px;
+            border-radius: 6px;
+            color: #334155;
+        }
+
+        .badge {
+            padding: 4px 10px;
+            border-radius: 9999px;
+            font-size: 11px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            text-transform: capitalize;
+        }
+
+        .badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; }
+        .badge.pendiente { background: #fef2f2; color: #b91c1c; }
+        .badge.pendiente::before { background: #ef4444; }
+        .badge.en-atención, .badge.en_atencion, .badge.en-atencion { background: #fffbeb; color: #b45309; }
+        .badge.en-atención::before, .badge.en_atencion::before, .badge.en-atencion::before { background: #f59e0b; }
+        .badge.resuelto { background: #ecfdf5; color: #047857; }
+        .badge.resuelto::before { background: #10b981; }
+
+        .prio { font-weight: 600; font-size: 12px; }
+        .prio.alta { color: #dc2626; }
+        .prio.media { color: #d97706; }
+        .prio.baja { color: #2563eb; }
+
+        select.status-select {
+            padding: 6px 10px;
+            border-radius: 6px;
+            border: 1px solid #cbd5e1;
+            background-color: #fff;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        /* Map Section */
+        .map-panel {
+            background: var(--bg-card);
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            border: 1px solid var(--border-color);
+            padding: 12px;
+            min-height: 550px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #map {
+            width: 100%;
+            height: 550px;
+            min-height: 550px;
+            border-radius: 8px;
+            z-index: 1;
+        }
+
+        /* Custom Map Marker */
+        .custom-pin {
+            width: 28px;
+            height: 28px;
+            border-radius: 50% 50% 50% 0;
+            transform: rotate(-45deg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.3);
+            border: 2px solid #fff;
+        }
+        .custom-pin::after {
+            content: '';
+            width: 10px;
+            height: 10px;
+            background: #fff;
+            border-radius: 50%;
+        }
+        .pin-pendiente { background: var(--status-pending); }
+        .pin-en-atencion { background: var(--status-progress); }
+        .pin-resuelto { background: var(--status-resolved); }
+
+        .popup-card { font-family: 'Inter', sans-serif; min-width: 200px; }
+        .popup-header {
+            font-weight: 700;
+            font-size: 14px;
+            color: #0f172a;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 6px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .popup-row { font-size: 12px; margin-bottom: 4px; color: #475569; }
+
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: #0f172a;
+            color: #fff;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 13px;
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s ease;
+            z-index: 9999;
+        }
+        .toast.show { transform: translateY(0); opacity: 1; }
+        .toast i { color: #10b981; font-size: 16px; }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+        <div class="navbar-brand">
+            <i class="fa-solid fa-city"></i>
+            Ciudad360
+            <span>Centro de Comando y Atención Ciudadana</span>
+        </div>
+        <button class="btn-refresh" onclick="recargarTodo()">
+            <i class="fa-solid fa-rotate-right" id="refresh-icon"></i> Actualizar Datos
+        </button>
+    </nav>
+
+    <div class="container">
+        <div class="metrics-grid">
+            <div class="card total">
+                <div class="card-info">
+                    <h3>Total Reportes</h3>
+                    <p id="metric-total">0</p>
+                </div>
+                <div class="card-icon"><i class="fa-solid fa-folder-open"></i></div>
+            </div>
+            <div class="card pendientes">
+                <div class="card-info">
+                    <h3>Pendientes</h3>
+                    <p id="metric-pendientes">0</p>
+                </div>
+                <div class="card-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+            </div>
+            <div class="card en_atencion">
+                <div class="card-info">
+                    <h3>En Atención</h3>
+                    <p id="metric-en-atencion">0</p>
+                </div>
+                <div class="card-icon"><i class="fa-solid fa-screwdriver-wrench"></i></div>
+            </div>
+            <div class="card resueltos">
+                <div class="card-info">
+                    <h3>Resueltos</h3>
+                    <p id="metric-resueltos">0</p>
+                </div>
+                <div class="card-icon"><i class="fa-solid fa-circle-check"></i></div>
+            </div>
+        </div>
+
+        <div class="content-grid">
+            <div class="panel">
+                <div class="panel-header">
+                    <h2><i class="fa-solid fa-list-check" style="color: var(--primary);"></i> Gestión de Reportes</h2>
+                    <div class="filters">
+                        <input type="text" id="searchInput" class="search-input" placeholder="Buscar folio o categoría..." onkeyup="filtrarTabla()">
+                        <select id="statusFilter" class="filter-select" onchange="filtrarTabla()">
+                            <option value="todos">Todos los estados</option>
+                            <option value="pendiente">Pendientes</option>
+                            <option value="atencion">En Atención</option>
+                            <option value="resuelto">Resueltos</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Folio</th>
+                                <th>Categoría</th>
+                                <th>Prioridad</th>
+                                <th>Estado</th>
+                                <th>Dependencia</th>
+                                <th>Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-reportes-body">
+                            <tr><td colspan="6" style="text-align: center; padding: 30px; color: var(--text-muted);">Cargando reportes...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="map-panel">
+                <div id="map"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast">
+        <i class="fa-solid fa-circle-check"></i>
+        <span id="toast-msg">Estado actualizado correctamente</span>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const map = L.map('map').setView([19.1738, -96.1342], 12);
+        
+        // Restaurado a OpenStreetMap estándar para garantizar visibilidad
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Forzar recálculo del tamaño del mapa tras renderizar el Grid
+        setTimeout(() => {
+            map.invalidateSize();
+        }, 300);
+
+        let markersGroup = L.layerGroup().addTo(map);
+        let markersByFolio = {};
+        let reportesGlobales = [];
+
+        function mostrarToast(mensaje) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = mensaje;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        function crearIconoEstado(estado) {
+            const est = (estado || '').toLowerCase();
+            let claseColor = 'pin-pendiente';
+            if (est.includes('atenci')) claseColor = 'pin-en-atencion';
+            else if (est.includes('resuelto')) claseColor = 'pin-resuelto';
+
+            return L.divIcon({
+                className: 'custom-div-icon',
+                html: `<div class="custom-pin ${claseColor}"></div>`,
+                iconSize: [28, 28],
+                iconAnchor: [14, 28],
+                popupAnchor: [0, -28]
+            });
+        }
+
+        async function cargarResumen() {
+            try {
+                const res = await fetch('/api/reportes/resumen');
+                const data = await res.json();
+                document.getElementById('metric-total').innerText = data.total || 0;
+                document.getElementById('metric-pendientes').innerText = data.pendientes || 0;
+                document.getElementById('metric-en-atencion').innerText = data.en_atencion || 0;
+                document.getElementById('metric-resueltos').innerText = data.resueltos || 0;
+            } catch (err) { console.error('Error cargando métricas:', err); }
+        }
+
+        async function cargarReportes() {
+            try {
+                const res = await fetch('/api/reportes');
+                reportesGlobales = await res.json();
+                renderizarDatos(reportesGlobales);
+            } catch (err) { console.error('Error cargando reportes:', err); }
+        }
+
+        function renderizarDatos(lista) {
+            const tbody = document.getElementById('tabla-reportes-body');
+            tbody.innerHTML = '';
+            markersGroup.clearLayers();
+            markersByFolio = {};
+
+            if (lista.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 24px; color: var(--text-muted);">No se encontraron reportes.</td></tr>`;
+                return;
+            }
+
+            lista.forEach(r => {
+                const estadoClass = r.estado.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(' ', '-');
+                const prioClass = (r.prioridad || '').toLowerCase();
+
+                const tr = document.createElement('tr');
+                tr.onclick = (e) => {
+                    if (e.target.tagName !== 'SELECT' && r.latitud && r.longitud) {
+                        map.flyTo([r.latitud, r.longitud], 16, { duration: 1.2 });
+                        if (markersByFolio[r.folio]) {
+                            markersByFolio[r.folio].openPopup();
+                        }
+                    }
+                };
+
+                tr.innerHTML = `
+                    <td><span class="folio-tag">${r.folio}</span></td>
+                    <td style="font-weight: 500;">${r.categoria}</td>
+                    <td><span class="prio ${prioClass}">${r.prioridad}</span></td>
+                    <td><span class="badge ${estadoClass}">${r.estado}</span></td>
+                    <td style="color: var(--text-muted);">${r.dependencia_asignada}</td>
+                    <td>
+                        <select class="status-select" onchange="actualizarEstado('${r.folio}', this.value)">
+                            <option value="" disabled selected>Cambiar...</option>
+                            <option value="1">Pendiente</option>
+                            <option value="2">En Atención</option>
+                            <option value="3">Resuelto</option>
+                        </select>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+
+                if (r.latitud && r.longitud) {
+                    const marker = L.marker([r.latitud, r.longitud], { icon: crearIconoEstado(r.estado) })
+                        .bindPopup(`
+                            <div class="popup-card">
+                                <div class="popup-header">
+                                    <span>${r.folio}</span>
+                                    <span style="font-size:11px; color:#64748b;">${r.estado}</span>
+                                </div>
+                                <div class="popup-row"><strong>Categoría:</strong> ${r.categoria}</div>
+                                <div class="popup-row"><strong>Dependencia:</strong> ${r.dependencia_asignada}</div>
+                                <div class="popup-row" style="margin-top:6px; font-style:italic;">"${r.comentario || 'Sin descripción adicional'}"</div>
+                            </div>
+                        `);
+                    markersGroup.addLayer(marker);
+                    markersByFolio[r.folio] = marker;
+                }
+            });
+        }
+
+        function filtrarTabla() {
+            const texto = document.getElementById('searchInput').value.toLowerCase();
+            const estadoFiltro = document.getElementById('statusFilter').value;
+
+            const filtrados = reportesGlobales.filter(r => {
+                const coincideTexto = r.folio.toLowerCase().includes(texto) || 
+                                      r.categoria.toLowerCase().includes(texto) ||
+                                      (r.dependencia_asignada && r.dependencia_asignada.toLowerCase().includes(texto));
+                
+                const estadoNorm = r.estado.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                const coincideEstado = estadoFiltro === 'todos' || estadoNorm.includes(estadoFiltro);
+
+                return coincideTexto && coincideEstado;
+            });
+
+            renderizarDatos(filtrados);
+        }
+
+        async function actualizarEstado(folio, nuevoEstadoId) {
+            try {
+                const res = await fetch(`/api/reportes/${folio}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ estado_id: nuevoEstadoId })
+                });
+                if (res.ok) {
+                    mostrarToast(`Folio ${folio} actualizado`);
+                    await cargarResumen();
+                    await cargarReportes();
+                    filtrarTabla();
+                }
+            } catch (err) { console.error('Error actualizando reporte:', err); }
+        }
+
+        async function recargarTodo() {
+            const icon = document.getElementById('refresh-icon');
+            icon.classList.add('fa-spin');
+            await Promise.all([cargarResumen(), cargarReportes()]);
+            filtrarTabla();
+            map.invalidateSize();
+            setTimeout(() => icon.classList.remove('fa-spin'), 500);
+            mostrarToast('Datos sincronizados');
+        }
+
+        cargarResumen();
+        cargarReportes();
+    </script>
+</body>
+</html>
