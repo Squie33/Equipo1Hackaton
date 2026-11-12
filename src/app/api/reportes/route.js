@@ -4,6 +4,7 @@ import { mkdir, writeFile, unlink } from "node:fs/promises";
 import path from "node:path";
 import pool from "../../../services/db.js";
 import { evaluarReporteCiudadano } from "../../../services/ai/aiService.js";
+import { enviarCorreoConfirmacion, enviarWhatsAppConfirmacion } from "../../../services/notificaciones.js";
 
 export const runtime = "nodejs";
 
@@ -255,6 +256,34 @@ const whatsappConsent = formData.get("whatsapp_consent") === "1";
     );
 
     await conexion.commit();
+
+    try {
+      const resultadosNotif = await Promise.allSettled([
+        email
+          ? enviarCorreoConfirmacion({
+              to: email,
+              folio,
+              codigo,
+              titulo: title,
+              categoria: category,
+              prioridad: prioridadFinal,
+              ubicacion: location,
+            })
+          : Promise.resolve(),
+        whatsappConsent && telefono
+          ? enviarWhatsAppConfirmacion({
+              to: telefono,
+              folio,
+              codigo,
+              categoria: category,
+              prioridad: prioridadFinal,
+              ubicacion: location,
+            })
+          : Promise.resolve(),
+      ]);
+    } catch (notifErr) {
+      console.error("Error al despachar notificaciones:", notifErr);
+    }
 
     return Response.json(
       {

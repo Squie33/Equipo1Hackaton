@@ -41,3 +41,16 @@ __pycache__/
 
 # Fotografías de reportes ciudadanos
 public/imagenes/
+
+# Archivos privados de ciudad360
+ciudad360/venv/
+ciudad360/admin/.env
+ciudad360/admin/.env.*
+ciudad360/flask.log
+ciudad360/ciudad360_respaldo.sql
+ciudad360/**/*.bak
+ciudad360/**/__pycache__/
+
+# Archivos temporales
+*.log
+*.bak
